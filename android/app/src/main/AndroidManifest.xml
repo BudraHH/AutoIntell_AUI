@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<!--BUDRA CHANGES-->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="autointell_aui"
         android:name="${applicationName}"
