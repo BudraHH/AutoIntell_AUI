@@ -4,7 +4,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logging/logging.dart';
 
 class ApiService {
-  final String baseUrl = "http://127.0.0.1:8000/api/";
+  // if emulator is used
+  final String baseUrl = "http://10.0.2.2:8000/api/";
+  // If you’re using a physical device, replace it with your PC’s local network IP
   final storage = const FlutterSecureStorage();
   final _logger = Logger('ApiService');
 
@@ -25,7 +27,7 @@ class ApiService {
         body: jsonEncode(requestBody),
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          // "Accept": "application/json",
         },
       );
 
