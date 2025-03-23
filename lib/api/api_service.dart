@@ -11,14 +11,12 @@ class ApiService {
   // LOGIN
   Future<String?> loginUser(String username, String password) async {
     try {
+      _logger.info('Attempting login with username: $username');
+
       final Map<String, String> requestBody = {
         "username": username,
         "password": password,
       };
-
-      _logger.info(
-        'Making login request with body: ${jsonEncode(requestBody)}',
-      );
 
       final response = await http.post(
         Uri.parse("${baseUrl}auth/login/"),
@@ -30,7 +28,8 @@ class ApiService {
       );
 
       _logger.info('Login response status: ${response.statusCode}');
-      _logger.info('Login response body: ${response.body}');
+      _logger.info('Request body sent: ${jsonEncode(requestBody)}');
+      _logger.info('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -38,9 +37,8 @@ class ApiService {
         await storage.write(key: "refresh_token", value: data["refresh"]);
         return data["access"];
       } else {
-        _logger.warning(
-          'Login failed with status: ${response.statusCode}, body: ${response.body}',
-        );
+        _logger.warning('Login failed with status: ${response.statusCode}');
+        _logger.warning('Error response: ${response.body}');
         return null;
       }
     } catch (e) {

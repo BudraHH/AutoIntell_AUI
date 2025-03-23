@@ -33,18 +33,28 @@ class LoginScreenState extends State<LoginScreen> {
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please enter both username and password"),
-        ),
+        const SnackBar(content: Text("Please enter username and password")),
       );
       return;
     }
 
-    _logger.info('Attempting login for user: $username');
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
 
     try {
+      _logger.info('Attempting login for user: $username');
       final token = await apiService.loginUser(username, password);
+
       if (!mounted) return;
+
+      // Hide loading indicator
+      Navigator.of(context).pop();
 
       if (token != null) {
         await storage.write(key: "offline_mode", value: "enabled");
@@ -55,19 +65,19 @@ class LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
         );
       } else {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Login Failed - Please check your credentials"),
-          ),
+          const SnackBar(content: Text("Login Failed - Invalid credentials")),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      _logger.severe('Login error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("An error occurred during login")),
-      );
+
+      // Hide loading indicator
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Login Error: ${e.toString()}")));
     }
   }
 
