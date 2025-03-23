@@ -8,8 +8,21 @@ void main(){
   runApp(AutoIntellApp());
 }
 
-class AutoIntellApp extends StatelessWidget {
-  final storage = FlutterSecureStorage();
+class AutoIntellApp extends StatefulWidget {
+  const AutoIntellApp({super.key});
+
+  @override
+  State<AutoIntellApp> createState() => _AutoIntellAppState();
+}
+
+class _AutoIntellAppState extends State<AutoIntellApp> {
+  late final FlutterSecureStorage storage;
+
+  @override
+  void initState() {
+    super.initState();
+    storage = const FlutterSecureStorage();
+  }
 
   Future<bool> checkLoginStatus() async {
     String? token = await storage.read(key: "access_token");
