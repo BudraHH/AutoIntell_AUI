@@ -8,9 +8,9 @@ import '../models/paginated_history_response.dart';
 
 class ApiService {
   // if emulator is used
-  final String baseUrl = "http://10.0.2.2:8000/api/";
-  // if physical device is used
-  // final String baseUrl = "http://192.168.111.250:8000/api/";
+  // final String baseUrl = "http://10.0.2.2:8000/api/";
+  // if physical device is used use system's ipv4 get from ipconfig cmd, then make sure you run the backend server on 0.0.0.0:8000 port
+  final String baseUrl = "http://192.168.111.250:8000/api/";
   final storage = const FlutterSecureStorage();
   final _logger = Logger('ApiService');
 

@@ -4,11 +4,9 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:autointell_aui/screens/login_screen.dart';
 import 'package:autointell_aui/screens/dashboard_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-// BUDRA CHANGES
 import 'package:logging/logging.dart';
 
 void main() {
-  // BUDRA CHANGES
   // Setup Logger
   Logger.root.level = Level.ALL; // Set the log level
   Logger.root.onRecord.listen((record) {
