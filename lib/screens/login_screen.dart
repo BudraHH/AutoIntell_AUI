@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:autointell_aui/api/api_service.dart';
-import 'package:autointell_aui/screens/dashboard_screen.dart';
+import '../api/api_service.dart';
+import '../screens/dashboard_screen.dart';
+import '../screens/register_screen.dart';
+import '../screens/forgot_password_screen.dart';
+import '../theme/app_theme.dart';
 import 'package:logging/logging.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,6 +21,7 @@ class LoginScreenState extends State<LoginScreen> {
   final storage = const FlutterSecureStorage();
   final _logger = Logger('LoginScreen');
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -34,28 +38,23 @@ class LoginScreenState extends State<LoginScreen> {
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter username and password")),
+        SnackBar(
+          content: const Text("Please enter username and password"),
+          backgroundColor: AppTheme.errorColor,
+        ),
       );
       return;
     }
 
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       _logger.info('Attempting login for user: $username');
       final token = await apiService.loginUser(username, password);
 
       if (!mounted) return;
-
-      // Hide loading indicator
-      Navigator.of(context).pop();
 
       if (token != null) {
         await storage.write(key: "offline_mode", value: "enabled");
@@ -67,39 +66,48 @@ class LoginScreenState extends State<LoginScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login Failed - Invalid credentials")),
+          SnackBar(
+            content: const Text("Login Failed - Invalid credentials"),
+            backgroundColor: AppTheme.errorColor,
+          ),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      // Hide loading indicator
-      Navigator.of(context).pop();
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Login Error: ${e.toString()}")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Login Error: ${e.toString()}"),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _handleForgotPassword() {
-    // TODO: Implement forgot password functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Forgot password feature coming soon!")),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
     );
   }
 
   void _handleRegister() {
-    // TODO: Implement registration navigation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Registration feature coming soon!")),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const RegisterScreen()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -107,7 +115,7 @@ class LoginScreenState extends State<LoginScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+                color: AppTheme.cardColor,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
@@ -116,57 +124,43 @@ class LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('Welcome Back', style: AppTheme.headlineStyle),
+                  const SizedBox(height: AppTheme.spacingS),
                   Text(
-                    'Login',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Welcome Back to Your Vehicle's health check-up partner",
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                    "Sign in to your vehicle's health check-up partner",
+                    style: AppTheme.subtitleStyle,
                   ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: AppTheme.paddingAll,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 32),
-                  TextField(
+                  const SizedBox(height: AppTheme.spacingXL),
+                  TextFormField(
                     controller: usernameController,
-                    decoration: InputDecoration(
+                    style: AppTheme.bodyStyle,
+                    decoration: AppTheme.getInputDecoration(
                       hintText: 'Username',
-                      prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
+                      prefixIcon: Icons.person_outline,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
+                  const SizedBox(height: AppTheme.spacingM),
+                  TextFormField(
                     controller: passwordController,
+                    style: AppTheme.bodyStyle,
                     obscureText: !_isPasswordVisible,
-                    decoration: InputDecoration(
+                    decoration: AppTheme.getInputDecoration(
                       hintText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: Icons.lock_outline,
                       suffixIcon: IconButton(
                         icon: Icon(
                           _isPasswordVisible
                               ? Icons.visibility_off
                               : Icons.visibility,
+                          color: AppTheme.textColorSecondary,
                         ),
                         onPressed: () {
                           setState(() {
@@ -174,60 +168,61 @@ class LoginScreenState extends State<LoginScreen> {
                           });
                         },
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
                     ),
                   ),
+                  const SizedBox(height: AppTheme.spacingS),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: _handleForgotPassword,
+                      style: AppTheme.textButtonStyle,
                       child: Text(
-                        'Forgot password?',
-                        style: TextStyle(color: Colors.grey.shade600),
+                        'Forgot Password?',
+                        style: AppTheme.bodyStyle.copyWith(
+                          color: AppTheme.primaryColor,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppTheme.spacingL),
                   ElevatedButton(
-                    onPressed: handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'LOGIN',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    onPressed: _isLoading ? null : handleLogin,
+                    style: AppTheme.primaryButtonStyle,
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Text(
+                              'LOGIN',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppTheme.spacingL),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Don't Have An Account? ",
-                        style: TextStyle(color: Colors.grey.shade600),
+                        "Don't have an account? ",
+                        style: AppTheme.subtitleStyle,
                       ),
                       TextButton(
                         onPressed: _handleRegister,
+                        style: AppTheme.textButtonStyle,
                         child: Text(
                           'Register Now',
-                          style: TextStyle(
-                            color: Theme.of(context).primaryColor,
+                          style: AppTheme.bodyStyle.copyWith(
+                            color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

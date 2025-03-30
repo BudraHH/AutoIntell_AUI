@@ -5,14 +5,40 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logging/logging.dart';
 import '../models/prediction_result.dart';
 import '../models/paginated_history_response.dart';
+import 'package:dio/dio.dart';
 
 class ApiService {
-  // if emulator is used
-  // final String baseUrl = "http://10.0.2.2:8000/api/";
-  // if physical device is used use system's ipv4 get from ipconfig cmd, then make sure you run the backend server on 0.0.0.0:8000 port
-  final String baseUrl = "http://192.168.111.250:8000/api/";
+  static const String baseUrl = 'http://192.168.111.250:8000/api/';
   final storage = const FlutterSecureStorage();
   final _logger = Logger('ApiService');
+  late Dio _dio;
+
+  ApiService() {
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        contentType: 'application/json',
+        validateStatus: (status) => status! < 500,
+      ),
+    );
+
+    // Add interceptor to handle authentication
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await storage.read(key: 'access_token');
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          return handler.next(options);
+        },
+        onError: (error, handler) {
+          _logger.severe('API Error: ${error.message}');
+          return handler.next(error);
+        },
+      ),
+    );
+  }
 
   // LOGIN
   Future<String?> loginUser(String username, String password) async {
@@ -177,5 +203,176 @@ class ApiService {
       "Content-Type": "application/json",
       "Authorization": "Bearer $token",
     };
+  }
+
+  // REGISTER
+  Future<Map<String, dynamic>?> registerUser(
+    String username,
+    String email,
+    String password,
+  ) async {
+    try {
+      _logger.info('Attempting registration for username: $username');
+
+      final response = await http.post(
+        Uri.parse('${baseUrl}auth/register/'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "username": username,
+          "email": email,
+          "password": password,
+        }),
+      );
+
+      _logger.info('Registration response status: ${response.statusCode}');
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        _logger.info('Registration successful');
+        return {
+          'success': true,
+          'message': 'Registration successful! Please log in.',
+        };
+      } else {
+        _logger.warning('Registration failed: ${response.body}');
+        return responseBody; // Contains {'error': '...'}
+      }
+    } catch (e) {
+      _logger.severe('Registration error: $e');
+      return {'error': 'An unexpected error occurred. Please try again.'};
+    }
+  }
+
+  // PASSWORD RESET REQUEST
+  Future<Map<String, dynamic>?> requestPasswordReset(String email) async {
+    try {
+      _logger.info('Requesting password reset for email: $email');
+
+      final response = await http.post(
+        Uri.parse('${baseUrl}auth/password-reset/'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email}),
+      );
+
+      final responseBody = jsonDecode(response.body);
+      _logger.info(
+        'Password Reset Request Status: ${response.statusCode}, Body: $responseBody',
+      );
+
+      return {...responseBody, 'statusCode': response.statusCode};
+    } catch (e) {
+      _logger.severe('Password Reset Request Error: $e');
+      return {'error': 'An unexpected error occurred. Please try again.'};
+    }
+  }
+
+  // PASSWORD RESET CONFIRMATION
+  Future<Map<String, dynamic>?> confirmPasswordReset({
+    required String uidb64,
+    required String token,
+    required String newPassword1,
+    required String newPassword2,
+  }) async {
+    try {
+      _logger.info('Confirming password reset for token: $token');
+
+      final response = await http.post(
+        Uri.parse('${baseUrl}auth/password-reset/confirm/'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "uidb64": uidb64,
+          "token": token,
+          "new_password1": newPassword1,
+          "new_password2": newPassword2,
+        }),
+      );
+
+      final responseBody = jsonDecode(response.body);
+      _logger.info(
+        'Password Reset Confirm Status: ${response.statusCode}, Body: $responseBody',
+      );
+
+      return {...responseBody, 'statusCode': response.statusCode};
+    } catch (e) {
+      _logger.severe('Password Reset Confirm Error: $e');
+      return {'error': 'An unexpected error occurred. Please try again.'};
+    }
+  }
+
+  Future<Map<String, dynamic>?> getPrediction({
+    required String vehicleId,
+    required Map<String, dynamic> sensorData,
+  }) async {
+    try {
+      _logger.info('Getting prediction for vehicle: $vehicleId');
+
+      // Transform the sensor data keys to match the expected format
+      final transformedData = {
+        'vehicle_id': vehicleId,
+        'Engine rpm': sensorData['engine_rpm'],
+        'Lub oil pressure': sensorData['lub_oil_pressure'],
+        'Fuel pressure': sensorData['fuel_pressure'],
+        'Coolant pressure': sensorData['coolant_pressure'],
+        'Lub oil temp': sensorData['lub_oil_temp'],
+        'Coolant temp': sensorData['coolant_temp'],
+      };
+
+      _logger.info('Transformed request data: $transformedData');
+
+      final headers = await _getAuthHeaders();
+
+      final response = await _dio.post(
+        'ml/predict/engine/',
+        data: transformedData,
+        options: Options(headers: headers),
+      );
+
+      _logger.info('Raw response data type: ${response.data.runtimeType}');
+      _logger.info('Raw response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        if (response.data is! Map<String, dynamic>) {
+          // If response.data is not already a Map, try to decode it
+          if (response.data is String) {
+            final decoded = json.decode(response.data as String);
+            if (decoded is Map<String, dynamic>) {
+              _logger.info('Successfully decoded JSON string to Map');
+              return decoded;
+            }
+          }
+          throw Exception(
+            'Unexpected response format: ${response.data.runtimeType}',
+          );
+        }
+
+        _logger.info('Prediction response: ${response.data}');
+        return response.data as Map<String, dynamic>;
+      }
+
+      throw Exception(
+        'Failed to get prediction: ${response.statusCode} - ${response.data}',
+      );
+    } catch (e) {
+      _logger.severe('Error getting prediction: $e');
+      throw Exception('Error getting prediction: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> predictEngineKilometers(String vehicleId) async {
+    try {
+      final response = await _dio.get('sensor/remaining-km/$vehicleId/');
+
+      if (response.statusCode == 200) {
+        if (response.data is Map<String, dynamic>) {
+          return response.data;
+        }
+        throw Exception('Invalid response format');
+      }
+
+      throw Exception('Failed to get prediction: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error getting prediction: $e');
+    }
   }
 }

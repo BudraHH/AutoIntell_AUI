@@ -31,6 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.13.4     # API requests to Django backend
+  dio: ^5.4.1       # Modern HTTP client for API requests
   provider: ^6.0.5  # State management
   shared_preferences: ^2.1.1  # Store authentication token
   flutter_secure_storage: ^9.0.0  # Securely store JWT tokens
@@ -40,6 +41,8 @@ dependencies:
   connectivity_plus: ^5.0.2
   logging: ^1.2.0   # Logging framework for better debugging
   intl: ^0.19.0     # Date formatting and internationalization
+  share_plus: ^10.1.4
+  fl_chart: ^0.70.2
 
 dev_dependencies:
   flutter_test:
