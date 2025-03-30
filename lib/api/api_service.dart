@@ -1,12 +1,16 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logging/logging.dart';
+import '../models/prediction_result.dart';
+import '../models/paginated_history_response.dart';
 
 class ApiService {
   // if emulator is used
   final String baseUrl = "http://10.0.2.2:8000/api/";
-  // If you’re using a physical device, replace it with your PC’s local network IP
+  // if physical device is used
+  // final String baseUrl = "http://192.168.111.250:8000/api/";
   final storage = const FlutterSecureStorage();
   final _logger = Logger('ApiService');
 
@@ -64,26 +68,26 @@ class ApiService {
   // FETCH real-time data
   Future<Map<String, dynamic>?> getSensorData(String vehicleId) async {
     try {
-      final token = await storage.read(key: "access_token");
-      if (token == null) {
-        _logger.warning('No access token found');
-        return null;
-      }
-
       final response = await http.get(
-        Uri.parse("${baseUrl}sensor/latest/$vehicleId"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+        Uri.parse('${baseUrl}sensor/latest/$vehicleId/'),
+        headers: await _getAuthHeaders(),
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        _logger.warning('Failed to fetch sensor data: ${response.statusCode}');
-        return null;
+        final Map<String, dynamic> data = json.decode(response.body);
+
+        // Verify the response has the expected structure
+        if (data.containsKey('Engine rpm') || data.containsKey('engine_rpm')) {
+          // Handle both key formats
+          return data;
+        }
+
+        throw Exception('Invalid response format from sensor API');
       }
+
+      throw Exception(
+        'Failed to fetch sensor data: ${response.statusCode} - ${response.body}',
+      );
     } catch (e) {
       _logger.severe('Error fetching sensor data: $e');
       return null;
@@ -91,7 +95,8 @@ class ApiService {
   }
 
   // FETCH engine health prediction
-  Future<Map<String, dynamic>?> getEnginePrediction({
+  Future<PredictionResult> getEnginePrediction({
+    required String vehicleId,
     required double engineRpm,
     required double lubOilPressure,
     required double fuelPressure,
@@ -100,37 +105,77 @@ class ApiService {
     required double coolantTemp,
   }) async {
     try {
-      final token = await storage.read(key: "access_token");
-      if (token == null) {
-        _logger.warning('No access token found');
-        return null;
-      }
-
       final response = await http.post(
-        Uri.parse("${baseUrl}ml/predict/engine"),
-        body: jsonEncode({
-          "engine_rpm": engineRpm,
-          "lub_oil_pressure": lubOilPressure,
-          "fuel_pressure": fuelPressure,
-          "coolant_pressure": coolantPressure,
-          "lub_oil_temp": lubOilTemp,
-          "coolant_temp": coolantTemp,
+        Uri.parse('${baseUrl}ml/predict/engine/'),
+        headers: await _getAuthHeaders(),
+        body: json.encode({
+          "vehicle_id": vehicleId,
+          "Engine rpm": engineRpm,
+          "Lub oil pressure": lubOilPressure,
+          "Fuel pressure": fuelPressure,
+          "Coolant pressure": coolantPressure,
+          "Lub oil temp": lubOilTemp,
+          "Coolant temp": coolantTemp,
         }),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        _logger.warning('Failed to fetch prediction: ${response.statusCode}');
-        return null;
+        final Map<String, dynamic> data = json.decode(response.body);
+        return PredictionResult.fromJson(data);
       }
+
+      throw Exception(
+        'Failed to get prediction: ${response.statusCode} - ${response.body}',
+      );
     } catch (e) {
-      _logger.severe('Error fetching prediction: $e');
+      throw Exception('Error getting prediction: $e');
+    }
+  }
+
+  Future<PaginatedHistoryResponse?> getPredictionHistory(
+    String vehicleId, {
+    int page = 1,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}sensor/history/$vehicleId/?page=$page'),
+        headers: await _getAuthHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return PaginatedHistoryResponse.fromJson(data);
+      }
+
+      if (response.statusCode == 404) {
+        // Handle case where page doesn't exist (end of pagination)
+        return PaginatedHistoryResponse(
+          results: [],
+          nextPageUrl: null,
+          totalCount: 0,
+          currentPage: page,
+        );
+      }
+
+      throw Exception(
+        'Failed to fetch history: ${response.statusCode} - ${response.body}',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching prediction history: $e');
+      }
       return null;
     }
+  }
+
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final token = await storage.read(key: "access_token");
+    if (token == null) {
+      throw Exception("No access token found");
+    }
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $token",
+    };
   }
 }

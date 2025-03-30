@@ -39,6 +39,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   connectivity_plus: ^5.0.2
   logging: ^1.2.0   # Logging framework for better debugging
+  intl: ^0.19.0     # Date formatting and internationalization
 
 dev_dependencies:
   flutter_test:
