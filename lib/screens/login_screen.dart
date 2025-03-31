@@ -15,7 +15,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class LoginScreenState extends State<LoginScreen> {
-  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final ApiService apiService = ApiService();
   final storage = const FlutterSecureStorage();
@@ -25,7 +25,7 @@ class LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    usernameController.dispose();
+    emailController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -33,13 +33,13 @@ class LoginScreenState extends State<LoginScreen> {
   Future<void> handleLogin() async {
     if (!mounted) return;
 
-    final username = usernameController.text.trim();
+    final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Please enter username and password"),
+          content: const Text("Please enter email and password"),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -51,8 +51,8 @@ class LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      _logger.info('Attempting login for user: $username');
-      final token = await apiService.loginUser(username, password);
+      _logger.info('Attempting login for user: $email');
+      final token = await apiService.loginUser(email, password);
 
       if (!mounted) return;
 
@@ -140,11 +140,11 @@ class LoginScreenState extends State<LoginScreen> {
                 children: [
                   const SizedBox(height: AppTheme.spacingXL),
                   TextFormField(
-                    controller: usernameController,
+                    controller: emailController,
                     style: AppTheme.bodyStyle,
                     decoration: AppTheme.getInputDecoration(
-                      hintText: 'Username',
-                      prefixIcon: Icons.person_outline,
+                      hintText: 'Email',
+                      prefixIcon: Icons.mail_lock_outlined,
                     ),
                   ),
                   const SizedBox(height: AppTheme.spacingM),

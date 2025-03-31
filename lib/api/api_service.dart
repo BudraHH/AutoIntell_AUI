@@ -6,9 +6,14 @@ import 'package:logging/logging.dart';
 import '../models/prediction_result.dart';
 import '../models/paginated_history_response.dart';
 import 'package:dio/dio.dart';
+import 'dart:math';
+import 'dart:async';
+
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.111.250:8000/api/';
+  // static const String baseUrl = 'http://192.168.111.250:8000/api/';
+  static const String baseUrl = 'http://10.0.2.2:8000/api/';
+
   final storage = const FlutterSecureStorage();
   final _logger = Logger('ApiService');
   late Dio _dio;
@@ -38,20 +43,76 @@ class ApiService {
         },
       ),
     );
+
+    // Start the timer to send dummy engine prediction every minute
+    _startDummyPredictionTimer();
   }
 
-  // LOGIN
-  Future<String?> loginUser(String username, String password) async {
+  // This method will run every minute
+  void _startDummyPredictionTimer() {
+    Timer.periodic(Duration(minutes: 1), (timer) async {
+      try {
+        _logger.info('Sending dummy engine prediction...');
+        // Example vehicleId, replace with actual vehicle ID
+        final vehicleId = 'vehicle123';
+        final result = await sendDummyEnginePrediction(vehicleId: vehicleId);
+        _logger.info('Dummy engine prediction sent: $result');
+      } catch (e) {
+        _logger.severe('Error sending dummy engine prediction: $e');
+      }
+    });
+  }
+
+  // Send dummy engine prediction method
+  Future<Map<String, dynamic>> sendDummyEnginePrediction({
+    required String vehicleId,
+  }) async {
     try {
-      _logger.info('Attempting login with username: $username');
+      // Create a random number generator
+      final random = Random();
+
+      // Prepare the dummy data with random values
+      final dummyData = {
+        "Engine rpm": 1000 + random.nextInt(4000), // Random value between 1000 and 5000
+        "Lub oil pressure": 1.0 + random.nextDouble() * 3.0, // Random value between 1.0 and 4.0
+        "Fuel pressure": 2.0 + random.nextDouble() * 3.0, // Random value between 2.0 and 5.0
+        "Coolant pressure": 2.0 + random.nextDouble() * 3.0, // Random value between 2.0 and 5.0
+        "Lub oil temp": 30 + random.nextInt(50), // Random value between 30 and 80
+        "Coolant temp": 30 + random.nextInt(50), // Random value between 30 and 80
+      };
+
+      // Send the data using the API
+      final headers = await _getAuthHeaders();
+      final response = await _dio.post(
+        'ml/predict/engine/',
+        data: dummyData,
+        options: Options(headers: headers),
+      );
+
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to send dummy engine prediction: ${response.statusCode}');
+      }
+    } catch (e) {
+      _logger.severe('Error sending dummy engine prediction: $e');
+      throw Exception('Error sending dummy engine prediction: $e');
+    }
+  }
+
+
+  // LOGIN
+  Future<String?> loginUser(String email, String password) async {
+    try {
+      _logger.info('Attempting login with email: $email');
 
       final Map<String, String> requestBody = {
-        "username": username,
+        "email" : email,
         "password": password,
       };
 
       final response = await http.post(
-        Uri.parse("${baseUrl}auth/login/"),
+        Uri.parse("${baseUrl}auth/sign-in/"),
         body: jsonEncode(requestBody),
         headers: {
           "Content-Type": "application/json",
@@ -91,34 +152,7 @@ class ApiService {
     }
   }
 
-  // FETCH real-time data
-  Future<Map<String, dynamic>?> getSensorData(String vehicleId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('${baseUrl}sensor/latest/$vehicleId/'),
-        headers: await _getAuthHeaders(),
-      );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-
-        // Verify the response has the expected structure
-        if (data.containsKey('Engine rpm') || data.containsKey('engine_rpm')) {
-          // Handle both key formats
-          return data;
-        }
-
-        throw Exception('Invalid response format from sensor API');
-      }
-
-      throw Exception(
-        'Failed to fetch sensor data: ${response.statusCode} - ${response.body}',
-      );
-    } catch (e) {
-      _logger.severe('Error fetching sensor data: $e');
-      return null;
-    }
-  }
 
   // FETCH engine health prediction
   Future<PredictionResult> getEnginePrediction({
@@ -215,7 +249,7 @@ class ApiService {
       _logger.info('Attempting registration for username: $username');
 
       final response = await http.post(
-        Uri.parse('${baseUrl}auth/register/'),
+        Uri.parse('${baseUrl}auth/sign-up/'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "username": username,
@@ -375,4 +409,8 @@ class ApiService {
       throw Exception('Error getting prediction: $e');
     }
   }
+
+
+
+
 }

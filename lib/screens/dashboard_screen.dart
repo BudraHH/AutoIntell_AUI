@@ -81,8 +81,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       errorMessage = null;
     });
 
+
     try {
-      final sensorData = await apiService.getSensorData(vehicleId);
+      final sensorData = await apiService.sendDummyEnginePrediction(vehicleId:vehicleId);
 
       if (sensorData != null) {
         setState(() {
