@@ -57,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                title: Text('Success', style: AppTheme.titleStyle),
+                title: const Text('Success', style: AppTheme.titleStyle),
                 content: Text(
                   response?['message'] ?? 'Registration successful!',
                   style: AppTheme.subtitleStyle,
@@ -117,18 +117,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.cardColor,
-                borderRadius: const BorderRadius.only(
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
                 ),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Create Account', style: AppTheme.headlineStyle),
-                  const SizedBox(height: AppTheme.spacingS),
+                  SizedBox(height: AppTheme.spacingS),
                   Text('Sign up to get started', style: AppTheme.subtitleStyle),
                 ],
               ),
@@ -269,7 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           'Already have an account? ',
                           style: AppTheme.subtitleStyle,
                         ),

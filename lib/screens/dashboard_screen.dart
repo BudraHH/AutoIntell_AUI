@@ -29,8 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Helper method to safely get numeric values from the map
   double? _getNumericValue(String key) {
-    final value =
-        latestSensorDataMap?[key] ??
+    final value = latestSensorDataMap?[key] ??
         latestSensorDataMap?[key.toLowerCase().replaceAll(' ', '_')];
     return (value as num?)?.toDouble();
   }
@@ -81,87 +80,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
       errorMessage = null;
     });
 
-
     try {
-      final sensorData = await apiService.sendDummyEnginePrediction(vehicleId:vehicleId);
+      final Map<String, dynamic> sensorData = await apiService
+          .getDisplayableDummyEngineData(vehicleId: vehicleId, sendToApi: true);
 
-      if (sensorData != null) {
+      if (mounted) {
         setState(() {
           latestSensorDataMap = sensorData;
-
-          // Parse timestamp safely
           try {
-            lastDataTimestamp = DateTime.tryParse(
-              sensorData['timestamp'] ?? '',
-            );
-          } catch (_) {
+            final timestampString = sensorData['timestamp'] as String?;
+            lastDataTimestamp = timestampString != null
+                ? DateTime.parse(timestampString).toLocal()
+                : DateTime.now();
+          } catch (e) {
             lastDataTimestamp = DateTime.now();
           }
-
           isLoading = false;
           errorMessage = null;
         });
-      } else {
-        throw Exception("Failed to fetch sensor data");
       }
     } catch (e) {
-      setState(() {
-        errorMessage = "Failed to fetch sensor data: $e";
-        isLoading = false;
-        latestSensorDataMap = null;
-        lastDataTimestamp = null;
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = "Failed to fetch sensor data: ${e.toString()}";
+          isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _logout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            backgroundColor: const Color(0xFF2A2D36),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text(
-              "Confirm Logout",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: const Text(
-              "Are you sure you want to logout?",
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                style: TextButton.styleFrom(foregroundColor: Colors.white70),
-                child: const Text("Cancel", style: TextStyle(fontSize: 16)),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                ),
-                child: const Text(
-                  "Logout",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2D36),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          "Confirm Logout",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        content: const Text(
+          "Are you sure you want to logout?",
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            style: TextButton.styleFrom(foregroundColor: Colors.white70),
+            child: const Text("Cancel", style: TextStyle(fontSize: 16)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+            ),
+            child: const Text(
+              "Logout",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
     );
 
     if (shouldLogout == true) {
@@ -185,39 +179,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    if (latestSensorDataMap == null || latestSensorDataMap!.isEmpty) {
+    if (latestSensorDataMap == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Sensor data not available. Refresh dashboard first."),
-        ),
-      );
-      return;
-    }
-
-    // Verify that all required sensor values are present
-    final requiredKeys = [
-      'Engine rpm',
-      'Lub oil pressure',
-      'Fuel pressure',
-      'Coolant pressure',
-      'Lub oil temp',
-      'Coolant temp',
-    ];
-
-    final missingKeys = requiredKeys.where(
-      (key) =>
-          !latestSensorDataMap!.containsKey(key) &&
-          !latestSensorDataMap!.containsKey(
-            key.toLowerCase().replaceAll(' ', '_'),
-          ),
-    );
-
-    if (missingKeys.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Incomplete sensor data. Missing: ${missingKeys.join(', ')}",
-          ),
+          content: Text("No sensor data available. Please refresh first."),
         ),
       );
       return;
@@ -226,24 +191,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => PredictionScreen(
-              vehicleId: vehicleId,
-              sensorData: latestSensorDataMap!,
-            ),
+        builder: (context) => PredictionScreen(
+          vehicleId: vehicleId,
+          sensorData: Map<String, dynamic>.from(latestSensorDataMap!),
+        ),
       ),
-    ).then((_) => _fetchLatestSensorData());
+    ).then((_) {
+      if (isOnline) {
+        _fetchLatestSensorData();
+      }
+    });
   }
 
   void _navigateToHistoryScreen() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => HistoryScreen(
-              vehicleId: vehicleId,
-              sensorData: latestSensorDataMap!,
-            ),
+        builder: (context) => HistoryScreen(
+          vehicleId: vehicleId,
+        ),
       ),
     );
   }
@@ -410,10 +376,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                      isOnline
-                          ? Colors.green.withOpacity(0.2)
-                          : Colors.orange.withOpacity(0.2),
+                  color: isOnline
+                      ? Colors.green.withOpacity(0.2)
+                      : Colors.orange.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -514,10 +479,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed:
-                          (!isLoading && isOnline)
-                              ? _navigateToPredictionScreen
-                              : null,
+                      onPressed: (!isLoading && isOnline)
+                          ? _navigateToPredictionScreen
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
                         foregroundColor: Colors.white,

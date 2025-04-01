@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logging/logging.dart';
@@ -9,10 +8,9 @@ import 'package:dio/dio.dart';
 import 'dart:math';
 import 'dart:async';
 
-
 class ApiService {
-  // static const String baseUrl = 'http://192.168.111.250:8000/api/';
-  static const String baseUrl = 'http://10.0.2.2:8000/api/';
+  static const String baseUrl = 'http://192.168.75.250:8000/api/';
+  // static const String baseUrl = 'http://10.0.2.2:8000/api/';
 
   final storage = const FlutterSecureStorage();
   final _logger = Logger('ApiService');
@@ -50,11 +48,11 @@ class ApiService {
 
   // This method will run every minute
   void _startDummyPredictionTimer() {
-    Timer.periodic(Duration(minutes: 1), (timer) async {
+    Timer.periodic(const Duration(minutes: 1), (timer) async {
       try {
         _logger.info('Sending dummy engine prediction...');
         // Example vehicleId, replace with actual vehicle ID
-        final vehicleId = 'vehicle123';
+        const vehicleId = 'vehicle123';
         final result = await sendDummyEnginePrediction(vehicleId: vehicleId);
         _logger.info('Dummy engine prediction sent: $result');
       } catch (e) {
@@ -73,12 +71,18 @@ class ApiService {
 
       // Prepare the dummy data with random values
       final dummyData = {
-        "Engine rpm": 1000 + random.nextInt(4000), // Random value between 1000 and 5000
-        "Lub oil pressure": 1.0 + random.nextDouble() * 3.0, // Random value between 1.0 and 4.0
-        "Fuel pressure": 2.0 + random.nextDouble() * 3.0, // Random value between 2.0 and 5.0
-        "Coolant pressure": 2.0 + random.nextDouble() * 3.0, // Random value between 2.0 and 5.0
-        "Lub oil temp": 30 + random.nextInt(50), // Random value between 30 and 80
-        "Coolant temp": 30 + random.nextInt(50), // Random value between 30 and 80
+        "Engine rpm":
+            1000 + random.nextInt(4000), // Random value between 1000 and 5000
+        "Lub oil pressure":
+            1.0 + random.nextDouble() * 3.0, // Random value between 1.0 and 4.0
+        "Fuel pressure":
+            2.0 + random.nextDouble() * 3.0, // Random value between 2.0 and 5.0
+        "Coolant pressure":
+            2.0 + random.nextDouble() * 3.0, // Random value between 2.0 and 5.0
+        "Lub oil temp":
+            30 + random.nextInt(50), // Random value between 30 and 80
+        "Coolant temp":
+            30 + random.nextInt(50), // Random value between 30 and 80
       };
 
       // Send the data using the API
@@ -92,7 +96,9 @@ class ApiService {
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>;
       } else {
-        throw Exception('Failed to send dummy engine prediction: ${response.statusCode}');
+        throw Exception(
+          'Failed to send dummy engine prediction: ${response.statusCode}',
+        );
       }
     } catch (e) {
       _logger.severe('Error sending dummy engine prediction: $e');
@@ -100,14 +106,13 @@ class ApiService {
     }
   }
 
-
   // LOGIN
   Future<String?> loginUser(String email, String password) async {
     try {
       _logger.info('Attempting login with email: $email');
 
       final Map<String, String> requestBody = {
-        "email" : email,
+        "email": email,
         "password": password,
       };
 
@@ -152,8 +157,6 @@ class ApiService {
     }
   }
 
-
-
   // FETCH engine health prediction
   Future<PredictionResult> getEnginePrediction({
     required String vehicleId,
@@ -197,18 +200,22 @@ class ApiService {
     int page = 1,
   }) async {
     try {
-      final response = await http.get(
-        Uri.parse('${baseUrl}sensor/history/$vehicleId/?page=$page'),
-        headers: await _getAuthHeaders(),
+      _logger.info('Fetching history for vehicle: $vehicleId, page: $page');
+
+      final response = await _dio.get(
+        '${baseUrl}history/$vehicleId/', // Updated endpoint
+        queryParameters: {'page': page},
+        options: Options(headers: await _getAuthHeaders()),
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
+        _logger.info('History fetched successfully');
+        final Map<String, dynamic> data = response.data;
         return PaginatedHistoryResponse.fromJson(data);
       }
 
       if (response.statusCode == 404) {
-        // Handle case where page doesn't exist (end of pagination)
+        _logger.info('No more history pages available');
         return PaginatedHistoryResponse(
           results: [],
           nextPageUrl: null,
@@ -217,13 +224,9 @@ class ApiService {
         );
       }
 
-      throw Exception(
-        'Failed to fetch history: ${response.statusCode} - ${response.body}',
-      );
+      throw Exception('Failed to fetch history: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching prediction history: $e');
-      }
+      _logger.severe('Error fetching prediction history: $e');
       return null;
     }
   }
@@ -334,59 +337,33 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>?> getPrediction({
+  Future<Map<String, dynamic>> getPrediction({
     required String vehicleId,
     required Map<String, dynamic> sensorData,
   }) async {
     try {
       _logger.info('Getting prediction for vehicle: $vehicleId');
-
-      // Transform the sensor data keys to match the expected format
-      final transformedData = {
-        'vehicle_id': vehicleId,
-        'Engine rpm': sensorData['engine_rpm'],
-        'Lub oil pressure': sensorData['lub_oil_pressure'],
-        'Fuel pressure': sensorData['fuel_pressure'],
-        'Coolant pressure': sensorData['coolant_pressure'],
-        'Lub oil temp': sensorData['lub_oil_temp'],
-        'Coolant temp': sensorData['coolant_temp'],
-      };
-
-      _logger.info('Transformed request data: $transformedData');
-
-      final headers = await _getAuthHeaders();
+      _logger.info('Sensor data: $sensorData');
 
       final response = await _dio.post(
         'ml/predict/engine/',
-        data: transformedData,
-        options: Options(headers: headers),
+        data: sensorData,
+        options: Options(headers: await _getAuthHeaders()),
       );
-
-      _logger.info('Raw response data type: ${response.data.runtimeType}');
-      _logger.info('Raw response data: ${response.data}');
 
       if (response.statusCode == 200) {
-        if (response.data is! Map<String, dynamic>) {
-          // If response.data is not already a Map, try to decode it
-          if (response.data is String) {
-            final decoded = json.decode(response.data as String);
-            if (decoded is Map<String, dynamic>) {
-              _logger.info('Successfully decoded JSON string to Map');
-              return decoded;
-            }
-          }
-          throw Exception(
-            'Unexpected response format: ${response.data.runtimeType}',
-          );
-        }
-
-        _logger.info('Prediction response: ${response.data}');
-        return response.data as Map<String, dynamic>;
+        final data = response.data as Map<String, dynamic>;
+        _logger.info('Prediction response: $data');
+        return {
+          'prediction': data['prediction'],
+          'health_score': data['health_score'],
+          'risk_level': data['risk_level'],
+          'km_for_coolant_change': data['km_for_coolant_change'],
+          'km_for_oil_change': data['km_for_oil_change'],
+        };
       }
 
-      throw Exception(
-        'Failed to get prediction: ${response.statusCode} - ${response.data}',
-      );
+      throw Exception('Failed to get prediction: ${response.statusCode}');
     } catch (e) {
       _logger.severe('Error getting prediction: $e');
       throw Exception('Error getting prediction: $e');
@@ -410,7 +387,64 @@ class ApiService {
     }
   }
 
+  Map<String, dynamic> _generateRandomEngineData() {
+    final random = Random();
+    return {
+      "Engine rpm": 1000 + random.nextInt(4000),
+      "Lub oil pressure": (1.0 + random.nextDouble() * 3.0).roundToDouble(),
+      "Fuel pressure": (2.0 + random.nextDouble() * 3.0).roundToDouble(),
+      "Coolant pressure": (2.0 + random.nextDouble() * 3.0).roundToDouble(),
+      "Lub oil temp": 30.0 + random.nextInt(50),
+      "Coolant temp": 30.0 + random.nextInt(50),
+    };
+  }
 
+  Future<Map<String, dynamic>> getDisplayableDummyEngineData({
+    required String vehicleId,
+    bool sendToApi = true,
+  }) async {
+    _logger.info('Generating displayable dummy data for vehicle: $vehicleId');
+    final Map<String, dynamic> generatedData = _generateRandomEngineData();
+    generatedData['timestamp'] = DateTime.now().toIso8601String();
 
+    if (sendToApi) {
+      try {
+        final headers = await _getAuthHeaders();
+        await _dio.post(
+          'ml/predict/engine/',
+          data: generatedData,
+          options: Options(headers: headers),
+        );
+        _logger.info('Generated data sent to API successfully.');
+      } catch (e) {
+        _logger.warning('Failed to send displayable dummy data to API: $e');
+      }
+    }
 
+    return generatedData;
+  }
+
+  Future<void> saveHistoricalRecord(Map<String, dynamic> record) async {
+    try {
+      _logger.info('Saving historical record: $record');
+
+      final response = await _dio.post(
+        'sensor/history/', // Updated endpoint
+        data: record,
+        options: Options(headers: await _getAuthHeaders()),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        _logger.warning('Failed to save history: ${response.statusCode}');
+        throw Exception(
+          'Failed to save historical record: ${response.statusCode}',
+        );
+      }
+
+      _logger.info('Historical record saved successfully');
+    } catch (e) {
+      _logger.severe('Error saving historical record: $e');
+      throw Exception('Error saving historical record: $e');
+    }
+  }
 }

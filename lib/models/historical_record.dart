@@ -8,6 +8,11 @@ class HistoricalRecord {
   final double coolantPressure; // kPa
   final double lubOilTemp; // °C
   final double coolantTemp; // °C
+  final double healthScore;
+  final String riskLevel;
+  final double lstmPrediction;
+  final double kmForCoolantChange;
+  final double kmForOilChange;
 
   HistoricalRecord({
     required this.vehicleId,
@@ -19,45 +24,50 @@ class HistoricalRecord {
     required this.coolantPressure,
     required this.lubOilTemp,
     required this.coolantTemp,
+    required this.healthScore,
+    required this.riskLevel,
+    required this.lstmPrediction,
+    required this.kmForCoolantChange,
+    required this.kmForOilChange,
   });
 
   factory HistoricalRecord.fromJson(Map<String, dynamic> json) {
-    String parsePredictionResult(dynamic value) {
-      if (value == null) return 'Unknown';
-      final result = value.toString().trim().toUpperCase();
-      if (result == 'H' || result == 'HEALTHY') return 'Healthy';
-      if (result == 'F' || result == 'FAULTY') return 'Faulty';
-      return 'Unknown';
-    }
-
     return HistoricalRecord(
-      vehicleId: json['vehicle_id'] as String? ?? '',
-      timestamp:
-          DateTime.tryParse(json['timestamp'] as String? ?? '') ??
-          DateTime.now(),
-      predictionResult: parsePredictionResult(json['prediction_result']),
-      engineRpm: (json['engine_rpm'] as num?)?.toDouble() ?? 0.0,
-      lubOilPressure: (json['lub_oil_pressure'] as num?)?.toDouble() ?? 0.0,
-      fuelPressure: (json['fuel_pressure'] as num?)?.toDouble() ?? 0.0,
-      coolantPressure: (json['coolant_pressure'] as num?)?.toDouble() ?? 0.0,
-      lubOilTemp: (json['lub_oil_temp'] as num?)?.toDouble() ?? 0.0,
-      coolantTemp: (json['coolant_temp'] as num?)?.toDouble() ?? 0.0,
+      vehicleId: json['vehicle_id'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      predictionResult: json['prediction_result'] as String,
+      engineRpm: (json['engine_rpm'] as num).toDouble(),
+      lubOilPressure: (json['lub_oil_pressure'] as num).toDouble(),
+      fuelPressure: (json['fuel_pressure'] as num).toDouble(),
+      coolantPressure: (json['coolant_pressure'] as num).toDouble(),
+      lubOilTemp: (json['lub_oil_temp'] as num).toDouble(),
+      coolantTemp: (json['coolant_temp'] as num).toDouble(),
+      healthScore: (json['health_score'] as num).toDouble(),
+      riskLevel: json['risk_level'] as String,
+      lstmPrediction: (json['lstm_prediction'] as num).toDouble(),
+      kmForCoolantChange: (json['km_for_coolant_change'] as num).toDouble(),
+      kmForOilChange: (json['km_for_oil_change'] as num).toDouble(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'vehicle_id': vehicleId,
-    'timestamp': timestamp.toIso8601String(),
-    'prediction_result': predictionResult,
-    'engine_rpm': engineRpm,
-    'lub_oil_pressure': lubOilPressure,
-    'fuel_pressure': fuelPressure,
-    'coolant_pressure': coolantPressure,
-    'lub_oil_temp': lubOilTemp,
-    'coolant_temp': coolantTemp,
-  };
+        'vehicle_id': vehicleId,
+        'timestamp': timestamp.toIso8601String(),
+        'prediction_result': predictionResult,
+        'engine_rpm': engineRpm,
+        'lub_oil_pressure': lubOilPressure,
+        'fuel_pressure': fuelPressure,
+        'coolant_pressure': coolantPressure,
+        'lub_oil_temp': lubOilTemp,
+        'coolant_temp': coolantTemp,
+        'health_score': healthScore,
+        'risk_level': riskLevel,
+        'lstm_prediction': lstmPrediction,
+        'km_for_coolant_change': kmForCoolantChange,
+        'km_for_oil_change': kmForOilChange,
+      };
 
-  bool get isHealthy => predictionResult == 'Healthy';
-  bool get isFaulty => predictionResult == 'Faulty';
-  bool get isUnknown => predictionResult == 'Unknown';
+  bool get isHealthy => predictionResult.trim().toUpperCase() == 'H';
+  bool get isFaulty => predictionResult.trim().toUpperCase() == 'F';
+  bool get isUnknown => !isHealthy && !isFaulty;
 }

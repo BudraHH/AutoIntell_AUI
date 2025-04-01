@@ -38,8 +38,8 @@ class LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Please enter email and password"),
+        const SnackBar(
+          content: Text("Please enter email and password"),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -66,8 +66,8 @@ class LoginScreenState extends State<LoginScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Login Failed - Invalid credentials"),
+          const SnackBar(
+            content: Text("Login Failed - Invalid credentials"),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -114,18 +114,18 @@ class LoginScreenState extends State<LoginScreen> {
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.cardColor,
-                borderRadius: const BorderRadius.only(
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
                 ),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Welcome Back', style: AppTheme.headlineStyle),
-                  const SizedBox(height: AppTheme.spacingS),
+                  SizedBox(height: AppTheme.spacingS),
                   Text(
                     "Sign in to your vehicle's health check-up partner",
                     style: AppTheme.subtitleStyle,
@@ -212,7 +212,7 @@ class LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         "Don't have an account? ",
                         style: AppTheme.subtitleStyle,
                       ),

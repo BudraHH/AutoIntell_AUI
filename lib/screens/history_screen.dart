@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../api/api_service.dart';
 import '../models/historical_record.dart';
+import '../services/local_storage_service.dart';
 import '../theme/app_theme.dart';
 import 'visualization_screen.dart';
 
@@ -13,7 +13,6 @@ class HistoryScreen extends StatefulWidget {
   const HistoryScreen({
     super.key,
     required this.vehicleId,
-    required Map<String, dynamic> sensorData,
   });
 
   @override
@@ -22,230 +21,119 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final _scrollController = ScrollController();
-  final _apiService = ApiService();
-
-  bool _isLoadingInitially = true;
-  bool _isLoadingMore = false;
-  String? _errorMessage;
+  late LocalStorageService _storageService;
+  bool _isLoading = true;
   List<HistoricalRecord> _historyRecords = [];
-  int _currentPage = 1;
-  bool _hasMorePages = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _setupScrollListener();
-    _fetchHistory();
+    _initializeStorage();
   }
 
-  void _setupScrollListener() {
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels >=
-          _scrollController.position.maxScrollExtent - 200) {
-        _loadMoreHistory();
-      }
-    });
+  Future<void> _initializeStorage() async {
+    try {
+      _storageService = await LocalStorageService.getInstance();
+      await _loadHistory();
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error initializing storage: $e';
+        _isLoading = false;
+      });
+    }
   }
 
-  Future<void> _fetchHistory() async {
-    setState(() {
-      _isLoadingInitially = true;
-      _errorMessage = null;
-      _historyRecords = [];
-      _currentPage = 1;
-      _hasMorePages = true;
-    });
+  Future<void> _loadHistory() async {
+    setState(() => _isLoading = true);
 
     try {
-      final response = await _apiService.getPredictionHistory(
-        widget.vehicleId,
-        page: 1,
-      );
-
-      if (response != null) {
-        setState(() {
-          _historyRecords = response.results;
-          _hasMorePages = response.hasNextPage;
-          _currentPage = response.currentPage;
-          _isLoadingInitially = false;
-        });
-      } else {
-        throw Exception('Failed to fetch history');
-      }
+      final records = await _storageService.getHistory();
+      setState(() {
+        _historyRecords = records
+            .where((record) => record.vehicleId == widget.vehicleId)
+            .toList();
+        _isLoading = false;
+        _errorMessage = null;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = 'Error loading history: $e';
-        _isLoadingInitially = false;
+        _isLoading = false;
       });
     }
   }
 
-  Future<void> _loadMoreHistory() async {
-    if (_isLoadingMore || !_hasMorePages) return;
-
-    setState(() => _isLoadingMore = true);
-
+  Future<void> _clearHistory() async {
     try {
-      final response = await _apiService.getPredictionHistory(
-        widget.vehicleId,
-        page: _currentPage + 1,
-      );
-
-      if (response != null) {
-        setState(() {
-          _historyRecords.addAll(response.results);
-          _hasMorePages = response.hasNextPage;
-          _currentPage = response.currentPage;
-          _isLoadingMore = false;
-        });
-      } else {
-        setState(() {
-          _hasMorePages = false;
-          _isLoadingMore = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _hasMorePages = false;
-        _isLoadingMore = false;
-      });
+      await _storageService.clearHistory();
+      await _loadHistory();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading more records: $e'),
-          backgroundColor: AppTheme.errorColor,
-        ),
+        const SnackBar(content: Text('History cleared successfully')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error clearing history: $e')),
       );
     }
   }
 
-  String _formatTimestamp(DateTime timestamp) {
-    return DateFormat('MMM dd, yyyy HH:mm').format(timestamp.toLocal());
-  }
-
-  Widget _buildHistoryCard(HistoricalRecord record) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
-      decoration: AppTheme.cardDecoration,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          backgroundColor: Colors.transparent,
-          collapsedBackgroundColor: Colors.transparent,
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color:
-                  record.isHealthy
-                      ? AppTheme.successColor.withOpacity(0.1)
-                      : AppTheme.warningColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              record.isHealthy ? Icons.check_circle : Icons.warning,
-              color:
-                  record.isHealthy
-                      ? AppTheme.successColor
-                      : AppTheme.warningColor,
-            ),
-          ),
-          title: Text(
-            _formatTimestamp(record.timestamp),
-            style: AppTheme.titleStyle.copyWith(fontSize: 16),
-          ),
-          subtitle: Text(
-            record.predictionResult,
-            style: AppTheme.subtitleStyle.copyWith(
-              color:
-                  record.isHealthy
-                      ? AppTheme.successColor
-                      : AppTheme.warningColor,
-            ),
-          ),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingM),
-              child: Column(
-                children: [
-                  _buildSensorReadingRow(
-                    'Engine RPM',
-                    record.engineRpm,
-                    'RPM',
-                    Icons.speed,
-                  ),
-                  _buildSensorReadingRow(
-                    'Lub Oil Pressure',
-                    record.lubOilPressure,
-                    'kPa',
-                    Icons.oil_barrel,
-                  ),
-                  _buildSensorReadingRow(
-                    'Fuel Pressure',
-                    record.fuelPressure,
-                    'kPa',
-                    Icons.local_gas_station,
-                  ),
-                  _buildSensorReadingRow(
-                    'Coolant Pressure',
-                    record.coolantPressure,
-                    'kPa',
-                    Icons.water_drop,
-                  ),
-                  _buildSensorReadingRow(
-                    'Lub Oil Temperature',
-                    record.lubOilTemp,
-                    '°C',
-                    Icons.thermostat,
-                  ),
-                  _buildSensorReadingRow(
-                    'Coolant Temperature',
-                    record.coolantTemp,
-                    '°C',
-                    Icons.thermostat_auto,
-                  ),
-                ],
-              ),
-            ),
-          ],
+  void _showVisualizationDialog(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VisualizationScreen(
+          records: _historyRecords,
+          vehicleId: widget.vehicleId,
         ),
       ),
     );
   }
 
-  Widget _buildSensorReadingRow(
-    String label,
-    double value,
-    String unit,
-    IconData icon,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
+  Widget _buildHistoryCard(HistoricalRecord record) {
+    final formattedDate =
+        DateFormat('MMM dd, yyyy HH:mm').format(record.timestamp);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
+      child: ExpansionTile(
+        title: Text(formattedDate, style: AppTheme.titleStyle),
+        subtitle: Text(
+          record.isHealthy ? 'Healthy' : 'Faulty',
+          style: AppTheme.subtitleStyle.copyWith(
+            color: record.isHealthy
+                ? AppTheme.successColor
+                : AppTheme.warningColor,
+          ),
+        ),
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: AppTheme.primaryColor, size: 20),
-          ),
-          const SizedBox(width: AppTheme.spacingM),
-          Expanded(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: AppTheme.labelStyle.copyWith(
-                    color: AppTheme.textColorSecondary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${value.toStringAsFixed(2)} $unit',
-                  style: AppTheme.valueStyle,
-                ),
+                _buildSensorReadingRow(
+                    'Engine RPM', record.engineRpm, 'RPM', Icons.speed),
+                _buildSensorReadingRow('Lub Oil Pressure',
+                    record.lubOilPressure, 'kPa', Icons.oil_barrel),
+                _buildSensorReadingRow('Fuel Pressure', record.fuelPressure,
+                    'kPa', Icons.local_gas_station),
+                _buildSensorReadingRow('Coolant Pressure',
+                    record.coolantPressure, 'kPa', Icons.water_drop),
+                _buildSensorReadingRow('Lub Oil Temperature', record.lubOilTemp,
+                    '°C', Icons.thermostat),
+                _buildSensorReadingRow('Coolant Temperature',
+                    record.coolantTemp, '°C', Icons.thermostat_auto),
+                const Divider(),
+                _buildSensorReadingRow('Health Score', record.healthScore * 100,
+                    '%', Icons.health_and_safety),
+                _buildSensorReadingRow('LSTM Confidence',
+                    record.lstmPrediction * 100, '%', Icons.analytics),
+                _buildSensorReadingRow('Coolant Change',
+                    record.kmForCoolantChange, 'km', Icons.water_drop),
+                _buildSensorReadingRow('Oil Change', record.kmForOilChange,
+                    'km', Icons.oil_barrel),
               ],
             ),
           ),
@@ -254,50 +142,72 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  Widget _buildSensorReadingRow(
+      String label, double value, String unit, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppTheme.primaryColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(label, style: AppTheme.labelStyle),
+          ),
+          Text(
+            '${value.toStringAsFixed(1)} $unit',
+            style: AppTheme.valueStyle,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLoadingIndicator() {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingM),
-      child: const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-        ),
+    return const Center(
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
       ),
     );
   }
 
   Widget _buildErrorView() {
     return Center(
-      child: Container(
-        padding: AppTheme.paddingAll,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 48,
-              color: AppTheme.errorColor,
-            ),
-            const SizedBox(height: AppTheme.spacingM),
-            Text(
-              'Error Loading History',
-              style: AppTheme.titleStyle,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              _errorMessage ?? 'Unknown error occurred',
-              style: AppTheme.subtitleStyle,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppTheme.spacingL),
-            ElevatedButton.icon(
-              onPressed: _fetchHistory,
-              style: AppTheme.primaryButtonStyle,
-              icon: const Icon(Icons.refresh),
-              label: const Text('RETRY'),
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: AppTheme.errorColor),
+          const SizedBox(height: AppTheme.spacingM),
+          Text(_errorMessage ?? 'An error occurred',
+              style: AppTheme.titleStyle),
+          const SizedBox(height: AppTheme.spacingM),
+          ElevatedButton(
+            onPressed: _loadHistory,
+            style: AppTheme.primaryButtonStyle,
+            child: const Text('RETRY'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.history,
+            size: 64,
+            color: AppTheme.textColorSecondary.withOpacity(0.5),
+          ),
+          const SizedBox(height: AppTheme.spacingM),
+          const Text('No History Available', style: AppTheme.titleStyle),
+          const SizedBox(height: AppTheme.spacingS),
+          const Text(
+            'Make predictions to see them here',
+            style: AppTheme.subtitleStyle,
+          ),
+        ],
       ),
     );
   }
@@ -307,77 +217,63 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Prediction History', style: AppTheme.titleStyle),
+        title: const Text('Prediction History', style: AppTheme.titleStyle),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.textColor),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          if (_historyRecords.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppTheme.textColor),
+              onPressed: () => _showClearHistoryDialog(context),
+            ),
+        ],
       ),
-      floatingActionButton:
-          _historyRecords.length >= 3
-              ? FloatingActionButton.extended(
-                onPressed: () => _showVisualizationDialog(context),
-                backgroundColor: AppTheme.primaryColor,
-                icon: const Icon(Icons.analytics),
-                label: const Text('VISUALIZE'),
-              )
-              : null,
-      body:
-          _isLoadingInitially
-              ? _buildLoadingIndicator()
-              : _errorMessage != null
+      floatingActionButton: _historyRecords.length >= 3
+          ? FloatingActionButton.extended(
+              onPressed: () => _showVisualizationDialog(context),
+              backgroundColor: AppTheme.primaryColor,
+              icon: const Icon(Icons.analytics),
+              label: const Text('VISUALIZE'),
+            )
+          : null,
+      body: _isLoading
+          ? _buildLoadingIndicator()
+          : _errorMessage != null
               ? _buildErrorView()
               : _historyRecords.isEmpty
-              ? Center(
-                child: Text('No history found', style: AppTheme.titleStyle),
-              )
-              : RefreshIndicator(
-                onRefresh: _fetchHistory,
-                color: AppTheme.primaryColor,
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: AppTheme.paddingAll,
-                  itemCount: _historyRecords.length + (_isLoadingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _historyRecords.length) {
-                      return _buildLoadingIndicator();
-                    }
-                    return _buildHistoryCard(_historyRecords[index]);
-                  },
-                ),
-              ),
+                  ? _buildEmptyView()
+                  : RefreshIndicator(
+                      onRefresh: _loadHistory,
+                      color: AppTheme.primaryColor,
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: AppTheme.paddingAll,
+                        itemCount: _historyRecords.length,
+                        itemBuilder: (context, index) =>
+                            _buildHistoryCard(_historyRecords[index]),
+                      ),
+                    ),
     );
   }
 
-  Future<void> _showVisualizationDialog(BuildContext context) async {
+  Future<void> _showClearHistoryDialog(BuildContext context) async {
     return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: AppTheme.cardColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.info_outline, color: AppTheme.primaryColor, size: 24),
-              const SizedBox(width: AppTheme.spacingM),
-              Text('AI Analysis', style: AppTheme.titleStyle),
-            ],
-          ),
-          content: Text(
-            'The visualizations are generated using AI analysis of historical data. '
-            'While they provide valuable insights, please note that the predictions '
-            'and patterns shown may not be 100% accurate and should be used as '
-            'supplementary information for decision-making.',
-            style: AppTheme.bodyStyle,
+          title: const Text('Clear History?'),
+          content: const Text(
+            'This will permanently delete all prediction history. This action cannot be undone.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
+              child: const Text(
                 'CANCEL',
                 style: TextStyle(color: AppTheme.textColorSecondary),
               ),
@@ -385,29 +281,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (context) => VisualizationScreen(
-                          records: _historyRecords,
-                          vehicleId: widget.vehicleId,
-                        ),
-                  ),
-                );
+                _clearHistory();
               },
-              style: AppTheme.primaryButtonStyle,
-              child: const Text('PROCEED'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.warningColor,
+              ),
+              child: const Text('CLEAR'),
             ),
           ],
         );
       },
     );
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
   }
 }

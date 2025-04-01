@@ -87,7 +87,7 @@ class _VehicleDataScreenState extends State<VehicleDataScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Sensor Readings', style: AppTheme.titleStyle),
+        title: const Text('Sensor Readings', style: AppTheme.titleStyle),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -106,7 +106,7 @@ class _VehicleDataScreenState extends State<VehicleDataScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Vehicle Information', style: AppTheme.titleStyle),
+                  const Text('Vehicle Information', style: AppTheme.titleStyle),
                   const SizedBox(height: AppTheme.spacingM),
                   Row(
                     children: [
@@ -118,7 +118,7 @@ class _VehicleDataScreenState extends State<VehicleDataScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Vehicle ID', style: AppTheme.labelStyle),
+                          const Text('Vehicle ID', style: AppTheme.labelStyle),
                           Text(
                             widget.vehicleId,
                             style: AppTheme.bodyStyle.copyWith(
@@ -133,7 +133,7 @@ class _VehicleDataScreenState extends State<VehicleDataScreen> {
               ),
             ),
             const SizedBox(height: AppTheme.spacingM),
-            Text('Sensor Readings', style: AppTheme.titleStyle),
+            const Text('Sensor Readings', style: AppTheme.titleStyle),
             const SizedBox(height: AppTheme.spacingM),
             GridView.count(
               crossAxisCount: 2,

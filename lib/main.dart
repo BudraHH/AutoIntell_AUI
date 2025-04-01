@@ -15,7 +15,7 @@ void main() {
     }
   });
 
-  runApp(AutoIntellApp());
+  runApp(const AutoIntellApp());
 }
 
 class AutoIntellApp extends StatefulWidget {

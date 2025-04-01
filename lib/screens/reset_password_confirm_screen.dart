@@ -63,7 +63,7 @@ class _ResetPasswordConfirmScreenState
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                title: Text('Success', style: AppTheme.titleStyle),
+                title: const Text('Success', style: AppTheme.titleStyle),
                 content: Text(
                   response?['message'] ??
                       'Your password has been reset successfully.',
@@ -125,18 +125,18 @@ class _ResetPasswordConfirmScreenState
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.cardColor,
-                borderRadius: const BorderRadius.only(
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
                 ),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Set New Password', style: AppTheme.headlineStyle),
-                  const SizedBox(height: AppTheme.spacingS),
+                  SizedBox(height: AppTheme.spacingS),
                   Text(
                     'Enter your new password below',
                     style: AppTheme.subtitleStyle,

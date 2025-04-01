@@ -41,10 +41,9 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
   }
 
   Widget _buildEngineRpmChart() {
-    final spots =
-        widget.records.asMap().entries.map((entry) {
-          return FlSpot(entry.key.toDouble(), entry.value.engineRpm);
-        }).toList();
+    final spots = widget.records.asMap().entries.map((entry) {
+      return FlSpot(entry.key.toDouble(), entry.value.engineRpm);
+    }).toList();
 
     // Calculate min and max RPM for better scale
     final maxRpm = widget.records.map((r) => r.engineRpm).reduce(max);
@@ -60,7 +59,7 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
             drawVerticalLine: false,
             horizontalInterval: rpmInterval,
             getDrawingHorizontalLine: (value) {
-              return FlLine(color: AppTheme.cardColor, strokeWidth: 1);
+              return const FlLine(color: AppTheme.cardColor, strokeWidth: 1);
             },
           ),
           titlesData: FlTitlesData(
@@ -152,7 +151,7 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
             drawVerticalLine: false,
             horizontalInterval: tempInterval,
             getDrawingHorizontalLine: (value) {
-              return FlLine(color: AppTheme.cardColor, strokeWidth: 1);
+              return const FlLine(color: AppTheme.cardColor, strokeWidth: 1);
             },
           ),
           titlesData: FlTitlesData(
@@ -204,10 +203,9 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
           borderData: FlBorderData(show: false),
           lineBarsData: [
             LineChartBarData(
-              spots:
-                  widget.records.asMap().entries.map((entry) {
-                    return FlSpot(entry.key.toDouble(), entry.value.lubOilTemp);
-                  }).toList(),
+              spots: widget.records.asMap().entries.map((entry) {
+                return FlSpot(entry.key.toDouble(), entry.value.lubOilTemp);
+              }).toList(),
               isCurved: true,
               color: AppTheme.primaryColor,
               barWidth: 3,
@@ -219,13 +217,12 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
               ),
             ),
             LineChartBarData(
-              spots:
-                  widget.records.asMap().entries.map((entry) {
-                    return FlSpot(
-                      entry.key.toDouble(),
-                      entry.value.coolantTemp,
-                    );
-                  }).toList(),
+              spots: widget.records.asMap().entries.map((entry) {
+                return FlSpot(
+                  entry.key.toDouble(),
+                  entry.value.coolantTemp,
+                );
+              }).toList(),
               isCurved: true,
               color: AppTheme.warningColor,
               barWidth: 3,
@@ -246,12 +243,11 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
 
   Widget _buildPressureChart() {
     // Calculate min and max pressures for better scale
-    final allPressures =
-        widget.records
-            .expand(
-              (r) => [r.lubOilPressure, r.fuelPressure, r.coolantPressure],
-            )
-            .toList();
+    final allPressures = widget.records
+        .expand(
+          (r) => [r.lubOilPressure, r.fuelPressure, r.coolantPressure],
+        )
+        .toList();
     final maxPressure = allPressures.reduce(max);
     final minPressure = allPressures.reduce(min);
     final pressureInterval = ((maxPressure - minPressure) / 4).roundToDouble();
@@ -265,7 +261,7 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
             drawVerticalLine: false,
             horizontalInterval: pressureInterval,
             getDrawingHorizontalLine: (value) {
-              return FlLine(color: AppTheme.cardColor, strokeWidth: 1);
+              return const FlLine(color: AppTheme.cardColor, strokeWidth: 1);
             },
           ),
           titlesData: FlTitlesData(
@@ -317,13 +313,12 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
           borderData: FlBorderData(show: false),
           lineBarsData: [
             LineChartBarData(
-              spots:
-                  widget.records.asMap().entries.map((entry) {
-                    return FlSpot(
-                      entry.key.toDouble(),
-                      entry.value.lubOilPressure,
-                    );
-                  }).toList(),
+              spots: widget.records.asMap().entries.map((entry) {
+                return FlSpot(
+                  entry.key.toDouble(),
+                  entry.value.lubOilPressure,
+                );
+              }).toList(),
               isCurved: true,
               color: AppTheme.primaryColor,
               barWidth: 3,
@@ -331,13 +326,12 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
               dotData: const FlDotData(show: false),
             ),
             LineChartBarData(
-              spots:
-                  widget.records.asMap().entries.map((entry) {
-                    return FlSpot(
-                      entry.key.toDouble(),
-                      entry.value.fuelPressure,
-                    );
-                  }).toList(),
+              spots: widget.records.asMap().entries.map((entry) {
+                return FlSpot(
+                  entry.key.toDouble(),
+                  entry.value.fuelPressure,
+                );
+              }).toList(),
               isCurved: true,
               color: AppTheme.successColor,
               barWidth: 3,
@@ -345,13 +339,12 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
               dotData: const FlDotData(show: false),
             ),
             LineChartBarData(
-              spots:
-                  widget.records.asMap().entries.map((entry) {
-                    return FlSpot(
-                      entry.key.toDouble(),
-                      entry.value.coolantPressure,
-                    );
-                  }).toList(),
+              spots: widget.records.asMap().entries.map((entry) {
+                return FlSpot(
+                  entry.key.toDouble(),
+                  entry.value.coolantPressure,
+                );
+              }).toList(),
               isCurved: true,
               color: AppTheme.warningColor,
               barWidth: 3,
@@ -492,10 +485,51 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Widget currentChart;
+    switch (_selectedChartIndex) {
+      case 0:
+        currentChart = Column(
+          children: [
+            _buildChartTitle('Engine RPM Trend'),
+            _buildEngineRpmChart(),
+          ],
+        );
+        break;
+      case 1:
+        currentChart = Column(
+          children: [
+            _buildChartTitle('Temperature Analysis'),
+            _buildTemperatureChart(),
+            _buildLegend(),
+          ],
+        );
+        break;
+      case 2:
+        currentChart = Column(
+          children: [
+            _buildChartTitle('Pressure Analysis'),
+            _buildPressureChart(),
+            _buildLegend(),
+          ],
+        );
+        break;
+      case 3:
+        currentChart = Column(
+          children: [
+            _buildChartTitle('Health Distribution'),
+            _buildHealthDistributionChart(),
+            _buildLegend(),
+          ],
+        );
+        break;
+      default:
+        currentChart = const SizedBox.shrink();
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Data Visualization', style: AppTheme.titleStyle),
+        title: const Text('Data Visualization', style: AppTheme.titleStyle),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -503,65 +537,47 @@ class _VisualizationScreenState extends State<VisualizationScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
-        children: [
-          Container(
-            height: 40,
-            margin: const EdgeInsets.symmetric(vertical: AppTheme.spacingM),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _chartTitles.length,
-              itemBuilder: (context, index) {
-                final isSelected = _selectedChartIndex == index;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(_chartTitles[index]),
-                    selected: isSelected,
-                    onSelected: (bool selected) {
-                      if (selected) {
-                        setState(() => _selectedChartIndex = index);
-                      }
-                    },
-                    selectedColor: AppTheme.primaryColor,
-                    backgroundColor: AppTheme.cardColor,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : AppTheme.textColor,
+      body: SingleChildScrollView(
+        padding: AppTheme.paddingAll,
+        child: Column(
+          children: [
+            Container(
+              height: 50,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _chartTitles.length,
+                itemBuilder: (context, index) {
+                  final isSelected = _selectedChartIndex == index;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: AppTheme.spacingS),
+                    child: ChoiceChip(
+                      label: Text(_chartTitles[index]),
+                      selected: isSelected,
+                      onSelected: (bool selected) {
+                        if (selected) {
+                          setState(() => _selectedChartIndex = index);
+                        }
+                      },
+                      selectedColor: AppTheme.primaryColor,
+                      backgroundColor: AppTheme.cardColor,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : AppTheme.textColor,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildChartTitle(_chartTitles[_selectedChartIndex]),
-                  Container(
-                    margin: const EdgeInsets.all(AppTheme.spacingM),
-                    padding: const EdgeInsets.all(AppTheme.spacingM),
-                    decoration: AppTheme.cardDecoration,
-                    child: Column(
-                      children: [
-                        if (_selectedChartIndex == 0)
-                          _buildEngineRpmChart()
-                        else if (_selectedChartIndex == 1)
-                          _buildTemperatureChart()
-                        else if (_selectedChartIndex == 2)
-                          _buildPressureChart()
-                        else
-                          _buildHealthDistributionChart(),
-                        const SizedBox(height: AppTheme.spacingM),
-                        _buildLegend(),
-                      ],
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: AppTheme.spacingL),
+            Container(
+              padding: AppTheme.paddingAll,
+              decoration: AppTheme.cardDecoration,
+              child: currentChart,
+            ),
+          ],
+        ),
       ),
     );
   }
